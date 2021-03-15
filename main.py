@@ -7,7 +7,7 @@ sys.path.append('/usr/lib/python3/dist-packages')
 import openpyxl
 
 
-class excel_file_reader:
+class ExcelFileSearcher:
     def __repr__(self):
         self.source_file = ""
         self.file_to_search = ""
@@ -41,33 +41,33 @@ class excel_file_reader:
                 return rownum, column
         return None, None
 
-    def search_column(self, lookingfor, colnum):
-        print("searching for", lookingfor)
+    def search_column(self, looking_for, col_num):
+        print("searching for", looking_for)
         for row in range(1, self.sheet_to_search.max_row + 1):
-            cell_name = "{}{}".format(colnum, row)
-            if lookingfor == self.sheet_to_search.cell(row, colnum).value:
-                print("cell found  at row{} and column {}".format(row, colnum))
-                return row, colnum
+            cell_name = "{}{}".format(col_num, row)
+            if looking_for == self.sheet_to_search.cell(row, col_num).value:
+                print("cell found  at row{} and column {}".format(row, col_num))
+                return row, col_num
         return None, None
 
-    def load_source_sheet(self, source_file):
-        etilist = []
-        srcActiveSheet = source_file[sys.argv[8]]
-        collookup = openpyxl.utils.column_index_from_string('I')
+    def load_source_sheet(self):
+        eti_list = []
+        src_active_sheet = self.source_file[sys.argv[8]]
+        col_lookup = openpyxl.utils.column_index_from_string('I')
         # start from range 2 to avoid taking the header row
-        for row in range(2, srcActiveSheet.max_row + 1):
-            valueincell = srcActiveSheet.cell(row, collookup).value
-            if valueincell is not None:
-                etilist.append(valueincell)
-        return etilist
+        for row in range(2, src_active_sheet.max_row + 1):
+            value_in_cell = src_active_sheet.cell(row, col_lookup).value
+            if value_in_cell is not None:
+                eti_list.append(value_in_cell)
+        return eti_list
 
-    def writerow(self, source_file, writesheet, data, rowtowrite):
+    def writerow(self, data, row_to_write):
         i = 0
-        for col in range(2, 5):
-            writesheet.cell(rowtowrite, col).value = data[i]
+        max_range: int = 2 + len(data)
+        for col in range(2, max_range):
+            self.sheet_to_write.cell(row_to_write, col).value = data[i]
             i += 1
-            source_file.save(sys.argv[7])
-
+            self.source_file.save(sys.argv[7])
 
 
 # Press the green button in the gutter to run the script.
@@ -81,13 +81,15 @@ class excel_file_reader:
 # usage python3 main.py /home/venkata/PycharmProjects/SearchExcel/testdump.xlsx Delivered "ETI-T100453" M H N
 # python3 main.py /home/venkata/PycharmProjects/SearchExcel/testdump.xlsx Delivered "ETI-T100453" M H N  /home/venkata/PycharmProjects/SearchExcel/test.xlsx Automate
 
+
 if __name__ == '__main__':
     print("File to open is {}".format(sys.argv[1]))
     print("Sheet  to open is {}".format(sys.argv[2]))
     print("Item to look for {}".format(sys.argv[3]))
+
     write_row = int(2)
     # open the file from where the search has to be done
-    file_reader = excel_file_reader()
+    file_reader = ExcelFileSearcher()
     file_reader.file_to_search = openpyxl.load_workbook(sys.argv[1])
     file_reader.sheet_to_search = file_reader.file_to_search[sys.argv[2]]
 
@@ -99,13 +101,13 @@ if __name__ == '__main__':
     # create a sheet at index 0 to write the search results
     file_reader.sheet_to_write = file_reader.source_file.create_sheet(title='Analysis', index=0)
     # parse the file and get the data to be searched as a list
-    srclist = file_reader.load_source_sheet(file_reader.source_file)
-    print("srclist length is ", len(srclist))
+    src_list = file_reader.load_source_sheet()
+    print("srclist length is ", len(src_list))
 
     searchin = openpyxl.utils.column_index_from_string(sys.argv[4])
 
     # iterate over the srclist and start searching
-    for index in srclist:
+    for index in src_list:
         # for index in issuelist:
         row, column = file_reader.search_column(index, searchin)
         if row is not None and column is not None:
@@ -114,10 +116,12 @@ if __name__ == '__main__':
             cell_to_print1 = file_reader.sheet_to_search.cell(row, col_to_look1)
             cell_to_print2 = file_reader.sheet_to_search.cell(row, col_to_look2)
             towrite = (index, cell_to_print1.value, cell_to_print2.value)
-            file_reader.writerow(file_reader.source_file, file_reader.sheet_to_write, towrite, write_row)
+            file_reader.writerow(towrite, write_row)
             write_row += 1
         else:
             towrite = (index, "TEST_CASE_NOT_FOUND", "CANNOT_DETERMINE_AUTOMATION_STATUS")
-            file_reader.writerow(file_reader.source_file, file_reader.sheet_to_write, towrite, write_row)
+            file_reader.writerow(towrite, write_row)
             write_row += 1
+
+
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
