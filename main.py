@@ -23,7 +23,7 @@ class ExcelFileSearcher:
                     cell_name].value, self.sheet_to_search[cell_name2].value))
 
     def search_sheet(self, lookingfor):
-        print("searching for", lookingfor)
+        #print("searching for", lookingfor)
         for row in range(1, self.sheet_to_search.max_row + 1):
             for column in range(1, self.sheet_to_search.max_column + 1):
                 cell_name = "{}{}".format(column, row)
@@ -33,7 +33,7 @@ class ExcelFileSearcher:
         return None, None
 
     def search_row(self, lookingfor, rownum):
-        print("searching for", lookingfor)
+        #print("searching for", lookingfor)
         for column in range(1, self.sheet_to_search.max_column + 1):
             cell_name = "{}{}".format(column, rownum)
             if lookingfor == self.sheet_to_search.cell(rownum, column).value:
@@ -42,7 +42,7 @@ class ExcelFileSearcher:
         return None, None
 
     def search_column(self, looking_for, col_num):
-        print("searching for", looking_for)
+        #print("searching for", looking_for)
         for row in range(1, self.sheet_to_search.max_row + 1):
             cell_name = "{}{}".format(col_num, row)
             if looking_for == self.sheet_to_search.cell(row, col_num).value:
@@ -80,14 +80,21 @@ class ExcelFileSearcher:
 # argv[8] Sheet to look from the source workbook
 # usage python3 main.py /home/venkata/PycharmProjects/SearchExcel/testdump.xlsx Delivered "ETI-T100453" M H N
 # python3 main.py /home/venkata/PycharmProjects/SearchExcel/testdump.xlsx Delivered "ETI-T100453" M H N  /home/venkata/PycharmProjects/SearchExcel/test.xlsx Automate
+#python3 main.py /home/venkata/PycharmProjects/SearchExcel/testdump.xlsx Delivered "ETI-T100453" M [H,N] 2  /home/venkata/PycharmProjects/SearchExcel/test.xlsx Automate
+#
+def extract_list_argument():
+    n = len(sys.argv[5])
+    a = sys.argv[5][1:n - 1]
+    a = a.split(',')
+    return a
 
 
 if __name__ == '__main__':
     print("File to open is {}".format(sys.argv[1]))
     print("Sheet  to open is {}".format(sys.argv[2]))
     print("Item to look for {}".format(sys.argv[3]))
-
     write_row = int(2)
+
     # open the file from where the search has to be done
     file_reader = ExcelFileSearcher()
     file_reader.file_to_search = openpyxl.load_workbook(sys.argv[1])
@@ -102,24 +109,38 @@ if __name__ == '__main__':
     file_reader.sheet_to_write = file_reader.source_file.create_sheet(title='Analysis', index=0)
     # parse the file and get the data to be searched as a list
     src_list = file_reader.load_source_sheet()
-    print("srclist length is ", len(src_list))
+
+    print("src_list length is ", len(src_list))
 
     searchin = openpyxl.utils.column_index_from_string(sys.argv[4])
+    col_list = extract_list_argument()
+    '''
+     for col_alpha in col_list:
+        print('col_alpha is ',col_alpha)
+    '''
+    col_to_lookup=[]
+    for col_alpha in col_list:
+        col_to_lookup.append(openpyxl.utils.column_index_from_string(col_alpha))
 
     # iterate over the srclist and start searching
     for index in src_list:
         # for index in issuelist:
+        towrite=[]
+
         row, column = file_reader.search_column(index, searchin)
         if row is not None and column is not None:
-            col_to_look1 = openpyxl.utils.column_index_from_string(sys.argv[5])
-            col_to_look2 = openpyxl.utils.column_index_from_string(sys.argv[6])
-            cell_to_print1 = file_reader.sheet_to_search.cell(row, col_to_look1)
-            cell_to_print2 = file_reader.sheet_to_search.cell(row, col_to_look2)
-            towrite = (index, cell_to_print1.value, cell_to_print2.value)
+            cells_to_print = []
+            for column_to_lookup in col_to_lookup:
+                cells_to_print.append(file_reader.sheet_to_search.cell(row, column_to_lookup))
+
+            towrite.append(index)
+            for k in range (0, len(cells_to_print)):
+                towrite.append(cells_to_print[k].value);
+
             file_reader.writerow(towrite, write_row)
             write_row += 1
         else:
-            towrite = (index, "TEST_CASE_NOT_FOUND", "CANNOT_DETERMINE_AUTOMATION_STATUS")
+            towrite = [index, "TEST_CASE_NOT_FOUND", "CANNOT_DETERMINE_AUTOMATION_STATUS"]
             file_reader.writerow(towrite, write_row)
             write_row += 1
 
